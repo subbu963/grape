@@ -12,6 +12,7 @@
     "babel-preset-grape": "https://github.com/terio/babel-preset-grape"
   },
   "scripts": {
-    "postinstall": "babel src --out-dir lib"
+    "build": "babel src --out-dir lib",
+    "prepare": "npm run build",
   }
 }
