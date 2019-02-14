@@ -12,7 +12,7 @@
     "babel-preset-grape": "https://github.com/terio/babel-preset-grape"
   },
   "scripts": {
-    "build": "babel src --out-dir lib",
-    "prepare": "npm run build"
+    "compile": "babel src --out-dir lib",
+    "prepare": "yarn compile"
   }
 }
