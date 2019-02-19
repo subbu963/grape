@@ -13,6 +13,8 @@
   },
   "scripts": {
     "compile": "babel src --out-dir lib",
-    "prepare": "yarn compile"
+    "watch:compile": "babel src -w --out-dir lib",
+    "prepare": "yarn compile",
+    "postinstall": "yarn compile"
   }
 }
