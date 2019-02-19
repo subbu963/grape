@@ -1,6 +1,7 @@
 import {isString, isNumber, isArray, isDefined, isFunction} from '../utils/type';
 import {toString} from '../utils/string';
 import nodeType from '../constants/node-type';
+import Component from '../classes/component';
 
 const PLACEHOLDER_POSSIBLE_VALUES = new Set([null, undefined, false, '']);
 
@@ -9,10 +10,30 @@ export function createVirtualNode(type, props, ...children) {
     const node = {
         $$type: type
     };
-    if(isFunction(type)) {
-        node.$$elementType = nodeType.COMPONENT_NODE;
-    } else {
-        node.$$elementType = nodeType.ELEMENT_NODE;
+    if(type) {
+        if(isFunction(type)) {
+            if(Component.isPrototypeOf(type)) {
+                node.$$elementType = nodeType.COMPONENT_NODE;
+                node.$$componentInstance = new node.$$type(node.$$props, node.$$children);
+                node.$$renderedComponent = node.$$componentInstance.render();
+                if(node.$$renderedComponent) {
+                    if(node.$$renderedComponent.$$children) {
+                        node.$$renderedComponent.$$children = node.$$renderedComponent.$$children.map(child => {
+                            if(Component.isPrototypeOf(child.$$type)) {
+                                return createVirtualNode(child.$$type, child.$$props, child.$$children);
+                            }
+                            return child;
+                        });
+                    }
+                    if(Component.isPrototypeOf(node.$$renderedComponent.$$type)) {
+                        node.$$renderedComponent = new node.$$renderedComponent.$$type(node.$$renderedComponent.$$props, node.$$renderedComponent.$$children);
+                        node.$$renderedComponent = node.$$renderedComponent.render();
+                    }
+                }
+            }
+        } else {
+            node.$$elementType = nodeType.ELEMENT_NODE;
+        }
     }
     if(props) {
         node.$$props = props;
