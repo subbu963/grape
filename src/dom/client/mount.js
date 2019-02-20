@@ -1,5 +1,5 @@
-import {create} from './node';
+import {mount as mountNode} from './node';
 
 export default function mount($parent, node) {
-    console.log(create(node));
+    mountNode($parent, node);
 }

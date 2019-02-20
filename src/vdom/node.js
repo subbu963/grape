@@ -1,7 +1,9 @@
-import {isString, isNumber, isArray, isDefined, isFunction} from '../utils/type';
+import {isString, isNumber, isArray, isDefined, isFunction, isObject} from '../utils/type';
 import {toString} from '../utils/string';
 import nodeType from '../constants/node-type';
 import Component from '../classes/component';
+import EVENTS from '../constants/events';
+import {isCustomAttr} from '../utils/attr';
 
 const PLACEHOLDER_POSSIBLE_VALUES = new Set([null, undefined, false, '']);
 
@@ -10,33 +12,27 @@ export function createVirtualNode(type, props, ...children) {
     const node = {
         $$type: type
     };
-    if(type) {
-        if(isFunction(type)) {
-            if(Component.isPrototypeOf(type)) {
-                node.$$elementType = nodeType.COMPONENT_NODE;
-                node.$$componentInstance = new node.$$type(node.$$props, node.$$children);
-                node.$$renderedComponent = node.$$componentInstance.render();
-                if(node.$$renderedComponent) {
-                    if(node.$$renderedComponent.$$children) {
-                        node.$$renderedComponent.$$children = node.$$renderedComponent.$$children.map(child => {
-                            if(Component.isPrototypeOf(child.$$type)) {
-                                return createVirtualNode(child.$$type, child.$$props, child.$$children);
-                            }
-                            return child;
-                        });
-                    }
-                    if(Component.isPrototypeOf(node.$$renderedComponent.$$type)) {
-                        node.$$renderedComponent = new node.$$renderedComponent.$$type(node.$$renderedComponent.$$props, node.$$renderedComponent.$$children);
-                        node.$$renderedComponent = node.$$renderedComponent.render();
-                    }
+    if(props) {
+        node.$$props = {
+            textProps: {},
+            events: {},
+            custom: {}
+        };
+        for(const key in props) {
+            if(key.startsWith('on') && EVENTS.has(key.substr(2))) {
+                node.$$props.events[key.substr(2)] = props[key];
+            } else if(isCustomAttr(key)) {
+                node.$$props.custom[key] = props[key];
+            } else {
+                if(key === 'style' && isObject(props[key])) {
+                    node.$$props.textProps[key] = Object.entries(props[key]).map(entry => entry.join(':')).join(';');
+                } else if(key === 'class' && isArray(props[key])) {
+                    node.$$props.textProps[key] = props[key].filter(e => e).join(' ');
+                } else {
+                    node.$$props.textProps[key] = toString(props[key]);
                 }
             }
-        } else {
-            node.$$elementType = nodeType.ELEMENT_NODE;
         }
-    }
-    if(props) {
-        node.$$props = props;
     }
     if(children) {
         node.$$children = children.map(child => {
@@ -60,6 +56,17 @@ export function createVirtualNode(type, props, ...children) {
             };
         });
     }
+    if(type) {
+        if(isFunction(type)) {
+            if(Component.isPrototypeOf(type)) {
+                node.$$elementType = nodeType.COMPONENT_NODE;
+                node.$$componentInstance = new node.$$type(node.$$props, node.$$children);
+                node.$$renderedComponent = node.$$componentInstance.render();
+            }
+        } else {
+            node.$$elementType = nodeType.ELEMENT_NODE;
+        }
+    }
     return node;
 }
 function getChildKeyPositionMap(node) {
@@ -81,8 +88,8 @@ export function diff(newNode, oldNode) {
     }
     if(newNode.$$elementType !== oldNode.$$elementType) {
         diff.$elementType = {
-            o: oldNode.$elementType,
-            n: newNode.$elementType
+            o: oldNode.$$elementType,
+            n: newNode.$$elementType
         };
         return diff;
     }
