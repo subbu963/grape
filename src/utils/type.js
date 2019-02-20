@@ -25,7 +25,7 @@ function isFunction(variable) {
     return getType(variable) === TYPE.function;
 }
 function isArray(variable) {
-    return getType(variable) === TYPE.array;
+    return Array.isArray(variable);
 }
 function areDifferentTypes(a, b) {
     return getType(a) !== getType(b);
