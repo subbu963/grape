@@ -46,7 +46,7 @@ export function createVirtualNode(type, props, ...children) {
             }
             if(isArray(child)) {
                 return {
-                    $$elementType: nodeType.DOCUMENT_FRAGMENT_NODE,
+                    $$elementType: nodeType.ARRAY_FRAGMENT_NODE,
                     $$children: child
                 };
             }
@@ -71,19 +71,23 @@ export function createVirtualNode(type, props, ...children) {
 }
 function getChildKeyPositionMap(node) {
     return node.$$children.reduce((acc, child, idx) => {
-        acc[child.$$props.key] = idx;
+        acc[child.$$props.custom.key] = idx;
+        return acc;
     }, {});
 }
-export function diff(newNode, oldNode) {
+export function getDiff(newNode, oldNode) {
     const diff = {
-        $equal: false,
         $type: false,
         $props: false,
         $elementType: false,
-        $fragment: false
+        $fragment: false,
+        $doesntExist: false
     };
-    if(newNode === oldNode) {
-        diff.$equal = true;
+    if(!oldNode || !newNode) {
+        diff.$doesntExist = {
+            o: !oldNode,
+            n: !newNode
+        }
         return diff;
     }
     if(newNode.$$elementType !== oldNode.$$elementType) {
@@ -100,7 +104,7 @@ export function diff(newNode, oldNode) {
         };
         return diff;
     }
-    if(newNode.$$elementType === nodeType.DOCUMENT_FRAGMENT_NODE) {
+    if(newNode.$$elementType === nodeType.ARRAY_FRAGMENT_NODE) {
         diff.$fragment = {
             $existing: {},
             $removed: {},
