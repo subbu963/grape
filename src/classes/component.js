@@ -4,6 +4,9 @@ export default class Component {
         this.children = children;
         this.state = {};
     }
+    updateProps(props) {
+        this.props = props;
+    }
     mounted(){
         console.log('mounted', this);
     }

@@ -17,7 +17,7 @@ function create(node, $childCache = new Map) {
     // if(node.$node) {
     //     throw new Error('node is already attached to the dom.');
     // }
-    if(node.$$renderedComponent) {
+    if(node.$$elementType === nodeType.COMPONENT_NODE) {
         return node.$node = create(node.$$renderedComponent);
     }
     if(node.$$elementType === nodeType.TEXT_NODE) {
@@ -125,7 +125,11 @@ function patch($parent, $$newNode, $$oldNode) {
         return;
     }
     $$newNode.$node = $$oldNode.$node;
+    if($$newNode.$$renderedComponent) {
+        $$newNode.$$renderedComponent.$node = $$newNode.$node;
+    }
     if($$oldNode.$$componentInstance) {
+        $$oldNode.$$componentInstance.updateProps($$newNode.$$componentInstance.props);
         $$newNode.$$componentInstance = $$oldNode.$$componentInstance;
         attachUpdateListener($$newNode);
     }

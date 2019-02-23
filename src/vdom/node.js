@@ -62,6 +62,11 @@ export function createVirtualNode(type, props, ...children) {
                 node.$$elementType = nodeType.COMPONENT_NODE;
                 node.$$componentInstance = new node.$$type(node.$$props, node.$$children);
                 node.$$renderedComponent = node.$$componentInstance.render();
+                if(!node.$$renderedComponent) {
+                    return {
+                        $$elementType: nodeType.PLACEHOLDER_NODE
+                    };
+                }
             }
         } else {
             node.$$elementType = nodeType.ELEMENT_NODE;
@@ -71,7 +76,9 @@ export function createVirtualNode(type, props, ...children) {
 }
 function getChildKeyPositionMap(node) {
     return node.$$children.reduce((acc, child, idx) => {
-        acc[child.$$props.custom.key] = idx;
+        if(child.$$props && child.$$props.custom) {
+            acc[child.$$props.custom.key] = idx;
+        }
         return acc;
     }, {});
 }
