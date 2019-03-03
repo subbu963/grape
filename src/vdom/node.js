@@ -6,7 +6,7 @@ import EVENTS from '../constants/events';
 import {isCustomAttr} from '../utils/attr';
 
 const PLACEHOLDER_POSSIBLE_VALUES = new Set([null, undefined, false, '']);
-
+const NON_EMPTY_NODES = new Set([nodeType.ELEMENT_NODE, nodeType.TEXT_NODE]);
 
 export function createVirtualNode(type, props, ...children) {
     const node = {
@@ -35,26 +35,7 @@ export function createVirtualNode(type, props, ...children) {
         }
     }
     if(children) {
-        node.$$children = children.map(child => {
-            if(PLACEHOLDER_POSSIBLE_VALUES.has(child)) {
-                return {
-                    $$elementType: nodeType.PLACEHOLDER_NODE
-                };
-            }
-            if(isDefined(child.$$elementType)) {
-                return child;
-            }
-            if(isArray(child)) {
-                return {
-                    $$elementType: nodeType.ARRAY_FRAGMENT_NODE,
-                    $$children: child
-                };
-            }
-            return {
-                $$elementType: nodeType.TEXT_NODE,
-                $$textContent: child
-            };
-        });
+        node.$$children = children.map(rawChildToVirtualNode);
     }
     if(type) {
         if(isFunction(type)) {
@@ -74,6 +55,26 @@ export function createVirtualNode(type, props, ...children) {
     }
     return node;
 }
+function rawChildToVirtualNode(child) {
+    if(PLACEHOLDER_POSSIBLE_VALUES.has(child)) {
+        return {
+            $$elementType: nodeType.PLACEHOLDER_NODE
+        };
+    }
+    if(isDefined(child.$$elementType)) {
+        return child;
+    }
+    if(isArray(child)) {
+        return {
+            $$elementType: nodeType.ARRAY_FRAGMENT_NODE,
+            $$children: child.map(rawChildToVirtualNode)
+        };
+    }
+    return {
+        $$elementType: nodeType.TEXT_NODE,
+        $$textContent: child
+    };
+}
 function getChildKeyPositionMap(node) {
     return node.$$children.reduce((acc, child, idx) => {
         if(child.$$props && child.$$props.custom) {
@@ -81,6 +82,36 @@ function getChildKeyPositionMap(node) {
         }
         return acc;
     }, {});
+}
+export function getNumSiblingsBeforeIdx(node, idx = 0) {
+    const children = getSafeChildren(node);
+    idx = idx || children.length;
+    let numSiblings = 0;
+    for(let i = 0; i < idx; i++) {
+        const child = children[i];
+        if(NON_EMPTY_NODES.has(child.$$elementType)) {
+            numSiblings++;
+            continue;
+        }
+        if(child.$$elementType === nodeType.PLACEHOLDER_NODE) {
+            continue;
+        }
+        numSiblings = numSiblings + getSafeChildren(child).map(c => getSafeChildren(c)).reduce((acc, cv) => acc + cv, 0);
+    }
+    return numSiblings;
+}
+export function getSafeProps(node) {
+    return node.$$props || {textProps: {}, custom: {}, events: {}};
+}
+export function getSafeChildren(node) {
+    if(node.$$elementType === nodeType.COMPONENT_NODE) {
+        return node.$$renderedComponent ? node.$$renderedComponent.$$children : [];
+    }
+    return node.$$children || [];
+}
+export function setParentNode(parent, child) {
+    child.$$parent = parent;
+    return child;
 }
 export function getDiff(newNode, oldNode) {
     const diff = {

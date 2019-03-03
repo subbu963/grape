@@ -1,5 +1,5 @@
 import nodeType from '../../constants/node-type';
-import {getDiff} from '../../vdom/node';
+import {getDiff, getSafeChildren, getSafeProps, getNumSiblingsBeforeIdx, setParentNode, createVirtualNode} from '../../vdom/node';
 
 function setProps($node, props) {
     if(!props) {
@@ -44,31 +44,34 @@ function create(node, $childCache = new Map) {
         if(node.$$elementType === nodeType.ARRAY_FRAGMENT_NODE) {
             node.$node._childNodes.push($child);
         }
-        if([nodeType.ARRAY_FRAGMENT_NODE, nodeType.PLACEHOLDER_NODE].includes(child.$$elementType)) {
-            $child._parentNode = node.$node;
-            $child._idx = node.$node.childNodes.length;
-        }
         node.$node.appendChild($child);
     });
     return node.$node;
 }
 function safeRemove($node) {
     if($node instanceof DocumentFragment) {
-        return getSafeNodeChildren($node).forEach($child => safeRemove($child));
+        return getSafeHTMLNodeChildren($node).forEach($child => safeRemove($child));
     }
     $node.remove();
 }
-function getSafeChildren(node) {
-    return node.$$renderedComponent ? node.$$renderedComponent.$$children : (node.$$children || []);
-}
-function getSafeNodeChildren($node) {
+
+function getSafeHTMLNodeChildren($node) {
     return $node._childNodes || $node.childNodes;
 }
-function getSafeParentNode($node) {
+function getSafeHTMLParentNode($node) {
     return $node._parentNode || $node.parentNode;
 }
-function getSafeProps(node) {
-    return node.$$props || {textProps: {}, custom: {}, events: {}};
+function setHTMLParentNode($parent, $child) {
+    if($child instanceof DocumentFragment) {
+        $child._parentNode = $parent;
+    }
+    return $child;
+}
+function copyHTMLNode($$newNode, $$oldNode) {
+    $$newNode.$node = $$oldNode.$node;
+    if($$newNode.$$renderedComponent) {
+        $$newNode.$$renderedComponent.$node = $$newNode.$node;
+    }
 }
 function getChildKeyCache(node) {
     return getSafeChildren(node).reduce((acc, child) => {
@@ -78,7 +81,7 @@ function getChildKeyCache(node) {
         return acc;
     }, new Map);
 }
-function patch($parent, $$newNode, $$oldNode) {
+function patch(parent, $parent, $$newNode, $$oldNode, idx) {
     const diff = getDiff($$newNode, $$oldNode);
     if(diff.$doesntExist.n) {
         doPreDetachTasks($$oldNode);
@@ -87,8 +90,9 @@ function patch($parent, $$newNode, $$oldNode) {
     }
     if(diff.$doesntExist.o) {
         $$newNode.$node = create($$newNode);
+        doPreAttachTasks(parent, $$newNode);
         $parent.appendChild($$newNode.$node);
-        doPostAttachTasks($$newNode);
+        doPostAttachTasks(parent, $parent, $$newNode);
         return;
     }
     if(diff.$elementType || diff.$type) {
@@ -98,15 +102,14 @@ function patch($parent, $$newNode, $$oldNode) {
         }
         if([nodeType.ARRAY_FRAGMENT_NODE, nodeType.PLACEHOLDER_NODE].includes($$oldNode.$$elementType)) {
             safeRemove($$oldNode.$node);
-            $parent.insertBefore($$newNode.$node, getSafeNodeChildren($parent)[$$oldNode.$node._idx] || null);
+            doPreAttachTasks(parent, $$newNode);
+            const numSiblingsBeforeIdx = getNumSiblingsBeforeIdx($$newNode.$$parent, idx);
+            $parent.insertBefore($$newNode.$node, getSafeHTMLNodeChildren($parent)[numSiblingsBeforeIdx] || null);
         } else {
-            if([nodeType.ARRAY_FRAGMENT_NODE, nodeType.PLACEHOLDER_NODE].includes($$newNode.$$elementType)) {
-                $$newNode.$node._idx = Array.from(getSafeNodeChildren($parent)).indexOf($$oldNode.$node);
-                $$newNode.$node._parentNode = $parent;
-            }
+            doPreAttachTasks(parent, $$newNode);
             $parent.replaceChild($$newNode.$node, $$oldNode.$node);
         }
-        doPostAttachTasks($$newNode);
+        doPostAttachTasks(parent, $parent, $$newNode);
         return;
     }
     if(diff.$fragment) {
@@ -116,28 +119,27 @@ function patch($parent, $$newNode, $$oldNode) {
             doPreDetachTasks(child);
             safeRemove(child.$node);
         }
+        doPreAttachTasks(parent, $$newNode);
+        const numSiblingsBeforeIdx = getNumSiblingsBeforeIdx($$newNode.$$parent, idx);
         $$newNode.$node = create($$newNode, getChildKeyCache($$oldNode));
-        $parent.insertBefore($$newNode.$node, getSafeNodeChildren($parent)[$$oldNode.$node._idx] || null);
+        $parent.insertBefore($$newNode.$node, getSafeHTMLNodeChildren($parent)[numSiblingsBeforeIdx] || null);
         for(const [key, idx] of Object.entries(diff.$fragment.$added)) {
             const child = getSafeChildren($$newNode)[idx];
-            doPostAttachTasks(child);
+            doPostAttachTasks($$newNode, $$newNode.$node, child);
         }
         return;
     }
-    $$newNode.$node = $$oldNode.$node;
-    if($$newNode.$$renderedComponent) {
-        $$newNode.$$renderedComponent.$node = $$newNode.$node;
-    }
+    copyHTMLNode($$newNode, $$oldNode);
     if($$oldNode.$$componentInstance) {
         $$oldNode.$$componentInstance.updateProps($$newNode.$$componentInstance.props);
         $$newNode.$$componentInstance = $$oldNode.$$componentInstance;
-        attachUpdateListener($$newNode);
+        attachUpdateListener(parent, $$newNode);
     }
     const $newChildren = getSafeChildren($$newNode);
     const $oldChildren = getSafeChildren($$oldNode);
     const len = Math.max($newChildren.length, $oldChildren.length);
     for(let i = 0; i < len ; i++) {
-        patch($$oldNode.$node, $newChildren[i], $oldChildren[i]);
+        patch($$newNode, $$newNode.$node, $newChildren[i], $oldChildren[i], i);
     }
 }
 function doPreDetachTasks(node) {
@@ -150,27 +152,32 @@ function doPreDetachTasks(node) {
         $$children.forEach(child => doPreDetachTasks(child));
     }
 }
-function attachUpdateListener(node) {
+function attachUpdateListener(parent, node) {
     node.$$componentInstance.setUpdateListener(() => {
         console.log('update called on', node);
         const $$newRenderedComponent = node.$$componentInstance.render();
-        patch(getSafeParentNode(node.$node), $$newRenderedComponent, node.$$renderedComponent);
+        patch(parent, getSafeHTMLParentNode(node.$node), $$newRenderedComponent, node.$$renderedComponent);
         node.$$renderedComponent = $$newRenderedComponent;
     });
 }
-function doPostAttachTasks(node) {
-    let $$children = node.$$children;
+function doPostAttachTasks(parent, $parent, node) {
+    const $$children = getSafeChildren(node);
+    setHTMLParentNode($parent, node.$node);
     if(node.$$elementType === nodeType.COMPONENT_NODE) {
-        $$children = node.$$renderedComponent.$$children;
         node.$$componentInstance.mounted();
-        attachUpdateListener(node);
+        attachUpdateListener(parent, node);
     }
-    if($$children) {
-        $$children.forEach(child => doPostAttachTasks(child));
-    }
+    $$children.forEach(child => doPostAttachTasks(node, getSafeHTMLParentNode(node.$node), child));
+}
+function doPreAttachTasks(parent, node) {
+    const $$children = getSafeChildren(node);
+    setParentNode(parent, node);
+    $$children.forEach(child => doPreAttachTasks(node, child));
 }
 export function mount($parent, node) {
     const $node = create(node);
+    const parent = createVirtualNode(null, null, node);
+    doPreAttachTasks(createVirtualNode(null, null, node), node);
     $parent.appendChild($node);
-    doPostAttachTasks(node);
+    doPostAttachTasks(parent, $parent, node);
 }
