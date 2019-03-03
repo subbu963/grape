@@ -96,7 +96,13 @@ export function getNumSiblingsBeforeIdx(node, idx = 0) {
         if(child.$$elementType === nodeType.PLACEHOLDER_NODE) {
             continue;
         }
-        numSiblings = numSiblings + getSafeChildren(child).map(c => getSafeChildren(c)).reduce((acc, cv) => acc + cv, 0);
+        if(child.$$elementType === nodeType.ARRAY_FRAGMENT_NODE) {
+            numSiblings = numSiblings + getNumSiblingsBeforeIdx(child);
+            continue;
+        }
+        if(child.$$renderedComponent) {
+            numSiblings = numSiblings + Math.min(1, getNumSiblingsBeforeIdx(child.$$renderedComponent));
+        }
     }
     return numSiblings;
 }
