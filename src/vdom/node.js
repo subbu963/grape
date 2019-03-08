@@ -125,7 +125,8 @@ export function getDiff(newNode, oldNode) {
         $props: false,
         $elementType: false,
         $fragment: false,
-        $doesntExist: false
+        $doesntExist: false,
+        $differentTexts: false
     };
     if(!oldNode || !newNode) {
         diff.$doesntExist = {
@@ -141,6 +142,10 @@ export function getDiff(newNode, oldNode) {
         };
         return diff;
     }
+    if(newNode.$$elementType === nodeType.TEXT_NODE && newNode.$$textContent !== oldNode.$$textContent) {
+        diff.$differentTexts = true;
+        return diff;
+    }
     if(newNode.$$type !== oldNode.$$type) {
         diff.$type = {
             o: oldNode.$$type,
@@ -150,7 +155,10 @@ export function getDiff(newNode, oldNode) {
     }
     if(newNode.$$elementType === nodeType.ARRAY_FRAGMENT_NODE) {
         diff.$fragment = {
-            $existing: {},
+            $existing: {
+                o: {},
+                n: {}
+            },
             $removed: {},
             $added: {}
         };
@@ -159,7 +167,8 @@ export function getDiff(newNode, oldNode) {
 
         Object.keys(oldKeyMap).forEach(key => {
             if(key in newKeyMap) {
-                diff.$fragment.$existing[key] = newKeyMap[key];
+                diff.$fragment.$existing.n[key] = newKeyMap[key];
+                diff.$fragment.$existing.o[key] = oldKeyMap[key];
                 return;
             }
             diff.$fragment.$removed[key] = oldKeyMap[key];

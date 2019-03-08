@@ -49,6 +49,7 @@ function create(node, $childCache = new Map) {
     return node.$node;
 }
 function safeRemove($node) {
+    const $parent = getSafeHTMLParentNode($node);
     if($node instanceof DocumentFragment) {
         return getSafeHTMLNodeChildren($node).forEach($child => safeRemove($child));
     }
@@ -58,8 +59,18 @@ function safeRemove($node) {
 function getSafeHTMLNodeChildren($node) {
     return $node._childNodes || $node.childNodes;
 }
-function getSafeHTMLParentNode($node) {
-    return $node._parentNode || $node.parentNode;
+function getSafeHTMLParentNode($node, immediate=true) {
+    const $parent = $node._parentNode || $node.parentNode;
+    if(!immediate && $parent instanceof DocumentFragment) {
+        return getSafeHTMLParentNode($parent);
+    }
+    return $parent;
+}
+function getSafeHTMLNode($node) {
+    if($node instanceof DocumentFragment) {
+        return getSafeHTMLParentNode($node, false);
+    }
+    return $node;
 }
 function setHTMLParentNode($parent, $child) {
     if($child instanceof DocumentFragment) {
@@ -81,8 +92,9 @@ function getChildKeyCache(node) {
         return acc;
     }, new Map);
 }
-function patch(parent, $parent, $$newNode, $$oldNode, idx) {
+function patch(parent, $parent, $$newNode, $$oldNode, idx = 0) {
     const diff = getDiff($$newNode, $$oldNode);
+    $parent = getSafeHTMLNode($parent);
     if(diff.$doesntExist.n) {
         doPreDetachTasks($$oldNode);
         safeRemove($$oldNode.$node);
@@ -95,7 +107,7 @@ function patch(parent, $parent, $$newNode, $$oldNode, idx) {
         doPostAttachTasks(parent, $parent, $$newNode);
         return;
     }
-    if(diff.$elementType || diff.$type) {
+    if(diff.$elementType || diff.$type || diff.$differentTexts) {
         $$newNode.$node = create($$newNode);
         if($$oldNode.$$elementType === nodeType.COMPONENT_NODE) {
             doPreDetachTasks($$oldNode);
@@ -114,19 +126,83 @@ function patch(parent, $parent, $$newNode, $$oldNode, idx) {
     }
     if(diff.$fragment) {
         // debugger
+        setParentNode(parent, $$newNode);
+        const numSiblingsBeforeIdx = getNumSiblingsBeforeIdx($$newNode.$$parent, idx);
         for(const [key, idx] of Object.entries(diff.$fragment.$removed)) {
             const child = getSafeChildren($$oldNode)[idx];
             doPreDetachTasks(child);
             safeRemove(child.$node);
         }
-        doPreAttachTasks(parent, $$newNode);
-        const numSiblingsBeforeIdx = getNumSiblingsBeforeIdx($$newNode.$$parent, idx);
-        $$newNode.$node = create($$newNode, getChildKeyCache($$oldNode));
-        $parent.insertBefore($$newNode.$node, getSafeHTMLNodeChildren($parent)[numSiblingsBeforeIdx] || null);
-        for(const [key, idx] of Object.entries(diff.$fragment.$added)) {
-            const child = getSafeChildren($$newNode)[idx];
-            doPostAttachTasks($$newNode, $$newNode.$node, child);
+        for(const [key, idx] of Object.entries(diff.$fragment.$existing.n)) {
+            const newChild = getSafeChildren($$newNode)[idx];
+            const oldChild = getSafeChildren($$oldNode)[diff.$fragment.$existing.o[key]];
+            patch($$newNode, $parent, newChild, oldChild);
         }
+        const existingChildArray = Object.entries(diff.$fragment.$existing.n).map(([key, idx]) => {
+            return {idx, node: getSafeChildren($$newNode)[diff.$fragment.$existing.n[key]]};
+        }).sort((a, b) => b.idx - a.idx);
+        for(let i = 1; i < existingChildArray.length; i++) {
+            const currentChild = existingChildArray[i].node;
+            const prevChild = existingChildArray[i - 1].node;
+            if(currentChild.$node instanceof DocumentFragment || prevChild.$node instanceof DocumentFragment) {
+                continue;
+            }
+            if(currentChild.$node.nextSibling === prevChild.$node) {
+                continue;
+            }
+            $parent.insertBefore(currentChild.$node, prevChild.$node);
+        }
+        const newChildArray = Object.entries(diff.$fragment.$added).map(([key, idx]) => {
+            const node = getSafeChildren($$newNode)[diff.$fragment.$added[key]];
+            const $node = create(node);
+            return {idx, node, isNew: true};
+        });
+        const updatedChildArray = [...existingChildArray, ...newChildArray].sort((a, b) => a.idx - b.idx);
+        const groupedNewNodes = [];
+        let fragmentParent = null;
+        let nextExistingNode = null;
+        let prevExistingNode = getSafeHTMLNodeChildren($parent)[numSiblingsBeforeIdx - 1] || null;
+        $$newNode.$node = $$oldNode.$node;
+        $$newNode.$node._childNodes = [];
+        updatedChildArray.forEach((e, idx) => {
+            const node = e.node;
+            $$newNode.$node._childNodes.push(node.$node);
+            if(e.isNew) {
+                fragmentParent = fragmentParent || document.createDocumentFragment();
+                fragmentParent.appendChild(node.$node);
+                if(idx === updatedChildArray.length - 1) {
+                    nextExistingNode = null;
+                    groupedNewNodes.push({nextExistingNode, prevExistingNode, fragmentParent});
+                }
+                return;
+            }
+            if(!fragmentParent) {
+                if(!(node.$node instanceof DocumentFragment)) {
+                    prevExistingNode = node.$node;
+                }
+                return;
+            }
+            if(node.$node instanceof DocumentFragment) {
+                nextExistingNode = null;
+            } else {
+                nextExistingNode = node.$node;
+            }
+            groupedNewNodes.push({nextExistingNode, prevExistingNode, fragmentParent});
+            fragmentParent = null;
+            nextExistingNode = null;
+            prevExistingNode = node.$node;
+        });
+        groupedNewNodes.forEach(e => {
+            if(e.nextExistingNode) {
+                $parent.insertBefore(e.fragmentParent, e.nextExistingNode);
+                return;
+            }
+            if(e.prevExistingNode) {
+                $parent.insertBefore(e.fragmentParent, e.prevExistingNode.nextSibling);
+                return;
+            }
+        });
+        newChildArray.forEach(e => doPostAttachTasks($$newNode, $$newNode.$node, e.node));
         return;
     }
     copyHTMLNode($$newNode, $$oldNode);
