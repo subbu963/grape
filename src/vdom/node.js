@@ -1,5 +1,6 @@
 import {isString, isNumber, isArray, isDefined, isFunction, isObject} from '../utils/type';
 import {toString} from '../utils/string';
+import {createDiffingMap, objectDiff} from '../utils/object';
 import nodeType from '../constants/node-type';
 import Component from '../classes/component';
 import EVENTS from '../constants/events';
@@ -119,19 +120,39 @@ export function setParentNode(parent, child) {
     child.$$parent = parent;
     return child;
 }
-export function getDiff(newNode, oldNode) {
+export function getPropDiff(newProps, oldProps) {
+    if(!newProps && !oldProps) {
+        return null;
+    }
+    const diff = {
+        textProps: createDiffingMap(),
+        events: createDiffingMap()
+    }
+    if(!newProps) {
+        diff.textProps.removed = oldProps.textProps;
+        diff.events.removed = oldProps.events;
+    } else if(!oldProps) {
+        diff.textProps.added = newProps.textProps;
+        diff.events.added = newProps.events;
+    } else {
+        diff.textProps = objectDiff(newProps.textProps, oldProps.textProps);
+        diff.events = objectDiff(newProps.events, oldProps.events);
+    }
+    return diff;
+}
+export function getNodeDiff(newNode, oldNode) {
     const diff = {};
     if(!oldNode || !newNode) {
         diff.doesntExist = {
+            n: !newNode,
             o: !oldNode,
-            n: !newNode
         }
         return diff;
     }
     if(newNode.$$elementType !== oldNode.$$elementType) {
         diff.elementType = {
+            n: newNode.$$elementType,
             o: oldNode.$$elementType,
-            n: newNode.$$elementType
         };
         return diff;
     }
@@ -141,20 +162,13 @@ export function getDiff(newNode, oldNode) {
     }
     if(newNode.$$type !== oldNode.$$type) {
         diff.type = {
+            n: newNode.$$type,
             o: oldNode.$$type,
-            n: newNode.$$type
         };
         return diff;
     }
     if(newNode.$$elementType === nodeType.ARRAY_FRAGMENT_NODE) {
-        diff.fragment = {
-            existing: {
-                o: {},
-                n: {}
-            },
-            removed: {},
-            added: {}
-        };
+        diff.fragment = createDiffingMap();
         const newKeyMap = getChildKeyPositionMap(newNode);
         const oldKeyMap = getChildKeyPositionMap(oldNode);
 
@@ -172,9 +186,6 @@ export function getDiff(newNode, oldNode) {
             }
             diff.fragment.added[key] = newKeyMap[key];
         });
-    }
-    if(newNode.$$props || oldNode.$$props) {
-        diff.props = {}
     }
     return diff;
 }

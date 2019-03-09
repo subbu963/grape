@@ -1,16 +1,24 @@
 import nodeType from '../../constants/node-type';
-import {getDiff, getSafeChildren, getSafeProps, getNumSiblingsBeforeIdx, setParentNode, createVirtualNode} from '../../vdom/node';
+import {getNodeDiff, getPropDiff, getSafeChildren, getSafeProps, getNumSiblingsBeforeIdx, setParentNode, createVirtualNode} from '../../vdom/node';
 
 function setProps($node, props) {
     if(!props) {
         return;
     }
-    for(const key in props.textProps) {
-        $node.setAttribute(key, props.textProps[key]);
-    }
-    for(const key in props.events) {
-        $node.addEventListener(key, props.events[key]);
-    }
+    setTextProps($node, props.textProps);
+    setEventProps($node, props.events);
+}
+function setTextProps($node, textProps) {
+    Object.entries(textProps).forEach(([attr, value]) => $node.setAttribute(attr, value));
+}
+function removeTextProps($node, textProps) {
+    Object.keys(textProps).forEach(attr => $node.removeAttribute(attr));
+}
+function setEventProps($node, events) {
+    Object.entries(events).forEach(([event, fn]) => $node.addEventListener(event, fn));
+}
+function removeEventProps($node, events) {
+    Object.entries(events).forEach(([event, fn]) => $node.removeEventListener(event, fn));
 }
 
 function create(node, $childCache = new Map) {
@@ -92,8 +100,28 @@ function getChildKeyCache(node) {
         return acc;
     }, new Map);
 }
+function patchProps($node, newProps, oldProps) {
+    if($node instanceof DocumentFragment) {
+        return;
+    }
+    const diff = getPropDiff(newProps, oldProps);
+    if(!diff) {
+        return;
+    }
+    removeTextProps($node, diff.textProps.removed);
+    setTextProps($node, diff.textProps.added);
+    setTextProps($node, diff.textProps.existing.changed);
+
+    removeEventProps($node, diff.events.removed);
+    removeEventProps($node, Object.keys(diff.events.existing.changed).reduce((acc, key) => {
+        acc[key] = diff.events.existing.o[key];
+        return acc;
+    }, {}));
+    setEventProps($node, diff.events.added);
+    setEventProps($node, diff.events.existing.changed);
+}
 function patch(parent, $parent, $$newNode, $$oldNode, idx = 0) {
-    const diff = getDiff($$newNode, $$oldNode);
+    const diff = getNodeDiff($$newNode, $$oldNode);
     $parent = getSafeHTMLNode($parent);
     if(diff.doesntExist) {
         if(diff.doesntExist.n) {
@@ -206,6 +234,7 @@ function patch(parent, $parent, $$newNode, $$oldNode, idx = 0) {
         return;
     }
     copyHTMLNode($$newNode, $$oldNode);
+    patchProps($$newNode.$node, $$newNode.$$props, $$oldNode.$$props);
     if($$oldNode.$$componentInstance) {
         $$oldNode.$$componentInstance.updateProps($$newNode.$$componentInstance.props);
         $$newNode.$$componentInstance = $$oldNode.$$componentInstance;
