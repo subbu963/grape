@@ -95,19 +95,19 @@ function getChildKeyCache(node) {
 function patch(parent, $parent, $$newNode, $$oldNode, idx = 0) {
     const diff = getDiff($$newNode, $$oldNode);
     $parent = getSafeHTMLNode($parent);
-    if(diff.$doesntExist.n) {
+    if(diff.doesntExist.n) {
         doPreDetachTasks($$oldNode);
         safeRemove($$oldNode.$node);
         return;
     }
-    if(diff.$doesntExist.o) {
+    if(diff.doesntExist.o) {
         $$newNode.$node = create($$newNode);
         doPreAttachTasks(parent, $$newNode);
         $parent.appendChild($$newNode.$node);
         doPostAttachTasks(parent, $parent, $$newNode);
         return;
     }
-    if(diff.$elementType || diff.$type || diff.$differentTexts) {
+    if(diff.elementType || diff.type || diff.differentTexts) {
         $$newNode.$node = create($$newNode);
         if($$oldNode.$$elementType === nodeType.COMPONENT_NODE) {
             doPreDetachTasks($$oldNode);
@@ -124,22 +124,22 @@ function patch(parent, $parent, $$newNode, $$oldNode, idx = 0) {
         doPostAttachTasks(parent, $parent, $$newNode);
         return;
     }
-    if(diff.$fragment) {
+    if(diff.fragment) {
         // debugger
         setParentNode(parent, $$newNode);
         const numSiblingsBeforeIdx = getNumSiblingsBeforeIdx($$newNode.$$parent, idx);
-        for(const [key, idx] of Object.entries(diff.$fragment.$removed)) {
+        for(const [key, idx] of Object.entries(diff.fragment.removed)) {
             const child = getSafeChildren($$oldNode)[idx];
             doPreDetachTasks(child);
             safeRemove(child.$node);
         }
-        for(const [key, idx] of Object.entries(diff.$fragment.$existing.n)) {
+        for(const [key, idx] of Object.entries(diff.fragment.existing.n)) {
             const newChild = getSafeChildren($$newNode)[idx];
-            const oldChild = getSafeChildren($$oldNode)[diff.$fragment.$existing.o[key]];
+            const oldChild = getSafeChildren($$oldNode)[diff.fragment.existing.o[key]];
             patch($$newNode, $parent, newChild, oldChild);
         }
-        const existingChildArray = Object.entries(diff.$fragment.$existing.n).map(([key, idx]) => {
-            return {idx, node: getSafeChildren($$newNode)[diff.$fragment.$existing.n[key]]};
+        const existingChildArray = Object.entries(diff.fragment.existing.n).map(([key, idx]) => {
+            return {idx, node: getSafeChildren($$newNode)[diff.fragment.existing.n[key]]};
         }).sort((a, b) => b.idx - a.idx);
         for(let i = 1; i < existingChildArray.length; i++) {
             const currentChild = existingChildArray[i].node;
@@ -152,8 +152,8 @@ function patch(parent, $parent, $$newNode, $$oldNode, idx = 0) {
             }
             $parent.insertBefore(currentChild.$node, prevChild.$node);
         }
-        const newChildArray = Object.entries(diff.$fragment.$added).map(([key, idx]) => {
-            const node = getSafeChildren($$newNode)[diff.$fragment.$added[key]];
+        const newChildArray = Object.entries(diff.fragment.added).map(([key, idx]) => {
+            const node = getSafeChildren($$newNode)[diff.fragment.added[key]];
             const $node = create(node);
             return {idx, node, isNew: true};
         });

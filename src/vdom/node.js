@@ -121,63 +121,63 @@ export function setParentNode(parent, child) {
 }
 export function getDiff(newNode, oldNode) {
     const diff = {
-        $type: false,
-        $props: false,
-        $elementType: false,
-        $fragment: false,
-        $doesntExist: false,
-        $differentTexts: false
+        type: false,
+        props: false,
+        elementType: false,
+        fragment: false,
+        doesntExist: false,
+        differentTexts: false
     };
     if(!oldNode || !newNode) {
-        diff.$doesntExist = {
+        diff.doesntExist = {
             o: !oldNode,
             n: !newNode
         }
         return diff;
     }
     if(newNode.$$elementType !== oldNode.$$elementType) {
-        diff.$elementType = {
+        diff.elementType = {
             o: oldNode.$$elementType,
             n: newNode.$$elementType
         };
         return diff;
     }
     if(newNode.$$elementType === nodeType.TEXT_NODE && newNode.$$textContent !== oldNode.$$textContent) {
-        diff.$differentTexts = true;
+        diff.differentTexts = true;
         return diff;
     }
     if(newNode.$$type !== oldNode.$$type) {
-        diff.$type = {
+        diff.type = {
             o: oldNode.$$type,
             n: newNode.$$type
         };
         return diff;
     }
     if(newNode.$$elementType === nodeType.ARRAY_FRAGMENT_NODE) {
-        diff.$fragment = {
-            $existing: {
+        diff.fragment = {
+            existing: {
                 o: {},
                 n: {}
             },
-            $removed: {},
-            $added: {}
+            removed: {},
+            added: {}
         };
         const newKeyMap = getChildKeyPositionMap(newNode);
         const oldKeyMap = getChildKeyPositionMap(oldNode);
 
         Object.keys(oldKeyMap).forEach(key => {
             if(key in newKeyMap) {
-                diff.$fragment.$existing.n[key] = newKeyMap[key];
-                diff.$fragment.$existing.o[key] = oldKeyMap[key];
+                diff.fragment.existing.n[key] = newKeyMap[key];
+                diff.fragment.existing.o[key] = oldKeyMap[key];
                 return;
             }
-            diff.$fragment.$removed[key] = oldKeyMap[key];
+            diff.fragment.removed[key] = oldKeyMap[key];
         });
         Object.keys(newKeyMap).forEach(key => {
             if(key in oldKeyMap) {
                 return;
             }
-            diff.$fragment.$added[key] = newKeyMap[key];
+            diff.fragment.added[key] = newKeyMap[key];
         });
     }
     return diff;
