@@ -95,12 +95,12 @@ function getChildKeyCache(node) {
 function patch(parent, $parent, $$newNode, $$oldNode, idx = 0) {
     const diff = getDiff($$newNode, $$oldNode);
     $parent = getSafeHTMLNode($parent);
-    if(diff.doesntExist.n) {
-        doPreDetachTasks($$oldNode);
-        safeRemove($$oldNode.$node);
-        return;
-    }
-    if(diff.doesntExist.o) {
+    if(diff.doesntExist) {
+        if(diff.doesntExist.n) {
+            doPreDetachTasks($$oldNode);
+            safeRemove($$oldNode.$node);
+            return;
+        }
         $$newNode.$node = create($$newNode);
         doPreAttachTasks(parent, $$newNode);
         $parent.appendChild($$newNode.$node);

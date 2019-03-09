@@ -120,14 +120,7 @@ export function setParentNode(parent, child) {
     return child;
 }
 export function getDiff(newNode, oldNode) {
-    const diff = {
-        type: false,
-        props: false,
-        elementType: false,
-        fragment: false,
-        doesntExist: false,
-        differentTexts: false
-    };
+    const diff = {};
     if(!oldNode || !newNode) {
         diff.doesntExist = {
             o: !oldNode,
@@ -179,6 +172,9 @@ export function getDiff(newNode, oldNode) {
             }
             diff.fragment.added[key] = newKeyMap[key];
         });
+    }
+    if(newNode.$$props || oldNode.$$props) {
+        diff.props = {}
     }
     return diff;
 }
