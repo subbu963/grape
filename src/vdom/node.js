@@ -51,6 +51,9 @@ export function createVirtualNode(type, props, ...children) {
                         $$elementType: nodeType.PLACEHOLDER_NODE
                     };
                 }
+                if(node.$$renderedComponent.$$elementType === nodeType.TEXT_NODE) {
+                    throw `Class ${type.name} render method returned a text node. It should return either a component, dom node or null`;
+                }
                 node.$$isSelfClosing = true;
             } else {
                 throw `Class ${type.name} should extend Component`;
