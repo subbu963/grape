@@ -141,6 +141,15 @@ export function setParentNode(parent, child) {
     child.$$parent = parent;
     return child;
 }
+export function getDeepElementType(node) {
+    if(!node) {
+        return nodeType.PLACEHOLDER_NODE;
+    }
+    if(node.$$elementType === nodeType.COMPONENT_NODE) {
+        return getDeepElementType(node.$$renderedComponent);
+    }
+    return node.$$elementType;
+}
 export function getPropDiff(newProps, oldProps) {
     if(!newProps && !oldProps) {
         return null;

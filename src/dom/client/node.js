@@ -287,15 +287,6 @@ function getNextNumSiblings($node, num) {
     }
     return $childNodes;
 }
-function getHTMLElementTypeOfNode(node) {
-    if(!node) {
-        return nodeType.PLACEHOLDER_NODE;
-    }
-    if(node.$$elementType === nodeType.COMPONENT_NODE) {
-        return getHTMLElementTypeOfNode(node.$$renderedComponent);
-    }
-    return node.$$elementType;
-}
 function hydrate($node, node) {
     for(let i = 0; i < node.$$children; i++) {
         const $child = $node.childNodes[i];
@@ -305,7 +296,7 @@ function hydrate($node, node) {
 }
 function stripGrapeTextComments($parent) {
     const treeWalker = document.createTreeWalker($parent, NodeFilter.SHOW_COMMENT, ($node) => {
-        if($node.nodeValue === 'grape-text') {
+        if($node.nodeValue === 'grape-sep') {
             return NodeFilter.FILTER_ACCEPT;
         }
         return NodeFilter.FILTER_SKIP;
