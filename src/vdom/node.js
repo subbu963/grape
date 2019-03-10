@@ -19,6 +19,7 @@ export function createVirtualNode(type, props, ...children) {
             events: {},
             custom: {}
         };
+        node.$$originalProps = props;
         for(const key in props) {
             if(key.startsWith('on') && EVENTS.has(key.substr(2))) {
                 node.$$props.events[key.substr(2)] = props[key];
@@ -36,13 +37,13 @@ export function createVirtualNode(type, props, ...children) {
         }
     }
     if(children) {
-        node.$$children = children.map(rawChildToVirtualNode);
+        node.$$children = rawChildrenToVirtualNodes(children);
     }
     if(type) {
         if(isFunction(type)) {
             if(Component.isPrototypeOf(type)) {
                 node.$$elementType = nodeType.COMPONENT_NODE;
-                node.$$componentInstance = new node.$$type(node.$$props, node.$$children);
+                node.$$componentInstance = new node.$$type(node.$$originalProps, node.$$children);
                 node.$$renderedComponent = node.$$componentInstance.render();
                 if(!node.$$renderedComponent) {
                     return {
@@ -56,25 +57,37 @@ export function createVirtualNode(type, props, ...children) {
     }
     return node;
 }
-function rawChildToVirtualNode(child) {
-    if(PLACEHOLDER_POSSIBLE_VALUES.has(child)) {
-        return {
-            $$elementType: nodeType.PLACEHOLDER_NODE
-        };
+function rawChildrenToVirtualNodes(rawChildren) {
+    const children = [];
+    children.$$isComponentChildren = true;
+    for(const rawChild of rawChildren) {
+        if(PLACEHOLDER_POSSIBLE_VALUES.has(rawChild)) {
+            children.push({
+                $$elementType: nodeType.PLACEHOLDER_NODE
+            });
+            continue;
+        }
+        if(isDefined(rawChild.$$elementType)) {
+            children.push(rawChild);
+            continue;
+        }
+        if(isArray(rawChild)) {
+            if(rawChild.$$isComponentChildren) {
+                children.push(...rawChild);
+                continue;
+            }
+            children.push({
+                $$elementType: nodeType.ARRAY_FRAGMENT_NODE,
+                $$children: rawChildrenToVirtualNodes(rawChild)
+            });
+            continue;
+        }
+        children.push({
+            $$elementType: nodeType.TEXT_NODE,
+            $$textContent: rawChild
+        });
     }
-    if(isDefined(child.$$elementType)) {
-        return child;
-    }
-    if(isArray(child)) {
-        return {
-            $$elementType: nodeType.ARRAY_FRAGMENT_NODE,
-            $$children: child.map(rawChildToVirtualNode)
-        };
-    }
-    return {
-        $$elementType: nodeType.TEXT_NODE,
-        $$textContent: child
-    };
+    return children;
 }
 function getChildKeyPositionMap(node) {
     return node.$$children.reduce((acc, child, idx) => {
