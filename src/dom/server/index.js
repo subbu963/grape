@@ -1,5 +1,5 @@
 import reduceNodeToString from './reducer';
 
-export default {
-    reduceNodeToString
+export {
+    reduceNodeToString as renderToString
 };

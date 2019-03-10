@@ -1,4 +1,3 @@
-const TERIO_ROOT = 'data-terioroot';
 const HTML_ATTRIBUTES = new Set([
     'accept',
     'accept-charset',
@@ -403,7 +402,6 @@ const SVG_ATTRIBUTES = new Set([
 ]);
 
 export {
-    TERIO_ROOT,
     SVG_ATTRIBUTES,
     HTML_ATTRIBUTES
 };
