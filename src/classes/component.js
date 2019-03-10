@@ -7,9 +7,7 @@ export default class Component {
     updateProps(props) {
         this.props = props;
     }
-    mounted(){
-        console.log('mounted', this);
-    }
+    mounted(){}
     willUnmount(){}
     setUpdateListener(onUpdateListener) {
         this.onUpdate = onUpdateListener;

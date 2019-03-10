@@ -2,6 +2,7 @@ import {isString, isNumber, isArray, isDefined, isFunction, isObject} from '../u
 import {toString} from '../utils/string';
 import {createDiffingMap, objectDiff} from '../utils/object';
 import nodeType from '../constants/node-type';
+import {VOID_ELEMENTS} from '../constants/element';
 import Component from '../classes/component';
 import EVENTS from '../constants/events';
 import {isCustomAttr} from '../utils/attr';
@@ -50,9 +51,13 @@ export function createVirtualNode(type, props, ...children) {
                         $$elementType: nodeType.PLACEHOLDER_NODE
                     };
                 }
+                node.$$isSelfClosing = true;
+            } else {
+                throw `Class ${type.name} should extend Component`;
             }
         } else {
             node.$$elementType = nodeType.ELEMENT_NODE;
+            node.$$isSelfClosing = VOID_ELEMENTS.has(node.$$type) && !node.$$children;
         }
     }
     return node;
