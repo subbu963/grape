@@ -1,5 +1,5 @@
 import nodeType from '../../constants/node-type';
-import {getNodeDiff, getPropDiff, getSafeChildren, getSafeProps, getNumSiblingsBeforeIdx, setParentNode, createVirtualNode} from '../../vdom/node';
+import {getNodeDiff, getPropDiff, getSafeChildren, getSafeProps, getNonEmptyChildrenBeforeIdx, setParentNode, createVirtualNode} from '../../vdom/node';
 
 function setProps($node, props) {
     if(!props) {
@@ -143,7 +143,7 @@ function patch(parent, $parent, $$newNode, $$oldNode, idx = 0) {
         if([nodeType.ARRAY_FRAGMENT_NODE, nodeType.PLACEHOLDER_NODE].includes($$oldNode.$$elementType)) {
             safeRemove($$oldNode.$node);
             doPreAttachTasks(parent, $$newNode);
-            const numSiblingsBeforeIdx = getNumSiblingsBeforeIdx($$newNode.$$parent, idx);
+            const numSiblingsBeforeIdx = getNonEmptyChildrenBeforeIdx($$newNode.$$parent, idx).length;
             $parent.insertBefore($$newNode.$node, getSafeHTMLNodeChildren($parent)[numSiblingsBeforeIdx] || null);
         } else {
             doPreAttachTasks(parent, $$newNode);
@@ -155,7 +155,7 @@ function patch(parent, $parent, $$newNode, $$oldNode, idx = 0) {
     if(diff.fragment) {
         // debugger
         setParentNode(parent, $$newNode);
-        const numSiblingsBeforeIdx = getNumSiblingsBeforeIdx($$newNode.$$parent, idx);
+        const numSiblingsBeforeIdx = getNonEmptyChildrenBeforeIdx($$newNode.$$parent, idx).length;
         for(const [key, idx] of Object.entries(diff.fragment.removed)) {
             const child = getSafeChildren($$oldNode)[idx];
             doPreDetachTasks(child);
@@ -279,10 +279,48 @@ function doPreAttachTasks(parent, node) {
     setParentNode(parent, node);
     $$children.forEach(child => doPreAttachTasks(node, child));
 }
+function getNextNumSiblings($node, num) {
+    const $childNodes = [];
+    for(let $child = $node, i = 0; i < num;i++) {
+        $childNodes.push($child);
+        $child = $child.nextSibling;
+    }
+    return $childNodes;
+}
+function getHTMLElementTypeOfNode(node) {
+    if(!node) {
+        return nodeType.PLACEHOLDER_NODE;
+    }
+    if(node.$$elementType === nodeType.COMPONENT_NODE) {
+        return getHTMLElementTypeOfNode(node.$$renderedComponent);
+    }
+    return node.$$elementType;
+}
+function hydrate($node, node) {
+    for(let i = 0; i < node.$$children; i++) {
+        const $child = $node.childNodes[i];
+        const child = node.$$children[i];
+        const htmlElementType = getHTMLElementTypeOfNode(child);
+    }
+}
+function stripGrapeTextComments($parent) {
+    const treeWalker = document.createTreeWalker($parent, NodeFilter.SHOW_COMMENT, ($node) => {
+        if($node.nodeValue === 'grape-text') {
+            return NodeFilter.FILTER_ACCEPT;
+        }
+        return NodeFilter.FILTER_SKIP;
+    });
+    const nodes = [];
+    while(treeWalker.nextNode()) {
+        nodes.push(treeWalker.currentNode);
+    }
+    nodes.forEach(node => node.remove());
+    return nodes;
+}
 export function mount($parent, node) {
     const $node = create(node);
     const parent = createVirtualNode(null, null, node);
-    doPreAttachTasks(createVirtualNode(null, null, node), node);
+    doPreAttachTasks(parent, node);
     $parent.appendChild($node);
     doPostAttachTasks(parent, $parent, node);
 }

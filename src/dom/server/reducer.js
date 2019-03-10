@@ -6,7 +6,7 @@ export default function reduceNodeToString(node) {
         return reduceNodeToString(node.$$renderedComponent);
     }
     if(node.$$elementType === nodeType.TEXT_NODE) {
-        return toString(node.$$textContent);
+        return `${toString(node.$$textContent)}<!--grape-text-->`;
     }
     if(node.$$elementType === nodeType.PLACEHOLDER_NODE) {
         return '';

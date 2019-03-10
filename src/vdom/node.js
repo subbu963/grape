@@ -105,28 +105,28 @@ function getChildKeyPositionMap(node) {
         return acc;
     }, {});
 }
-export function getNumSiblingsBeforeIdx(node, idx = 0) {
-    const children = getSafeChildren(node);
-    idx = idx || children.length;
-    let numSiblings = 0;
+export function getNonEmptyChildrenBeforeIdx(parent, idx = 0) {
+    const allChildren = getSafeChildren(parent);
+    idx = idx || allChildren.length;
+    const childrenBeforeIdx = [];
     for(let i = 0; i < idx; i++) {
-        const child = children[i];
+        const child = allChildren[i];
         if(NON_EMPTY_NODES.has(child.$$elementType)) {
-            numSiblings++;
+            childrenBeforeIdx.push(child);
             continue;
         }
         if(child.$$elementType === nodeType.PLACEHOLDER_NODE) {
             continue;
         }
         if(child.$$elementType === nodeType.ARRAY_FRAGMENT_NODE) {
-            numSiblings = numSiblings + getNumSiblingsBeforeIdx(child);
+            childrenBeforeIdx.push(...getNonEmptyChildrenBeforeIdx(child));
             continue;
         }
         if(child.$$renderedComponent) {
-            numSiblings = numSiblings + Math.min(1, getNumSiblingsBeforeIdx(child.$$renderedComponent));
+            childrenBeforeIdx.push(...getNonEmptyChildrenBeforeIdx(child.$$renderedComponent));
         }
     }
-    return numSiblings;
+    return childrenBeforeIdx;
 }
 export function getSafeProps(node) {
     return node.$$props || {textProps: {}, custom: {}, events: {}};
