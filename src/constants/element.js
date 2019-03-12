@@ -16,6 +16,8 @@ const VOID_ELEMENTS = new Set([
     'track',
     'wbr'
 ]);
+const GRAPE_TEXT_SEPARATOR = 'grape-sep';
 export {
-    VOID_ELEMENTS
+    VOID_ELEMENTS,
+    GRAPE_TEXT_SEPARATOR
 };

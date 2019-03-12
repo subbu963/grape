@@ -123,13 +123,19 @@ export function getNonEmptyChildrenBeforeIdx(parent, idx = 0) {
             continue;
         }
         if(child.$$renderedComponent) {
-            childrenBeforeIdx.push(...getNonEmptyChildrenBeforeIdx(child.$$renderedComponent));
+            const $$renderedComponent = getDeepElement(child);
+            if($$renderedComponent) {
+                childrenBeforeIdx.push($$renderedComponent);
+            }
         }
     }
     return childrenBeforeIdx;
 }
 export function getSafeProps(node) {
-    return node.$$props || {textProps: {}, custom: {}, events: {}};
+    return (node && node.$$props) || {textProps: {}, custom: {}, events: {}};
+}
+export function getDeepProps(node) {
+    return getSafeProps(getDeepElement(node));
 }
 export function getSafeChildren(node) {
     if(node.$$elementType === nodeType.COMPONENT_NODE) {
@@ -149,6 +155,15 @@ export function getDeepElementType(node) {
         return getDeepElementType(node.$$renderedComponent);
     }
     return node.$$elementType;
+}
+export function getDeepElement(node) {
+    if(!node) {
+        return null;
+    }
+    if(node.$$elementType === nodeType.COMPONENT_NODE) {
+        return getDeepElement(node.$$renderedComponent);
+    }
+    return node;
 }
 export function getPropDiff(newProps, oldProps) {
     if(!newProps && !oldProps) {

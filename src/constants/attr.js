@@ -400,8 +400,9 @@ const SVG_ATTRIBUTES = new Set([
     'z',
     'zoomAndPan'
 ]);
-
+const GRAPE_ROOT_ATTR = 'data-grape-root';
 export {
     SVG_ATTRIBUTES,
-    HTML_ATTRIBUTES
+    HTML_ATTRIBUTES,
+    GRAPE_ROOT_ATTR
 };

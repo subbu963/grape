@@ -1,5 +1,7 @@
 import nodeType from '../../constants/node-type';
-import {getNodeDiff, getPropDiff, getSafeChildren, getSafeProps, getNonEmptyChildrenBeforeIdx, setParentNode, createVirtualNode} from '../../vdom/node';
+import {GRAPE_TEXT_SEPARATOR} from '../../constants/element';
+import {toLowerCase} from '../../utils/string';
+import {getDeepProps, getNodeDiff, getPropDiff, getSafeChildren, getSafeProps, getNonEmptyChildrenBeforeIdx, setParentNode, createVirtualNode} from '../../vdom/node';
 
 function setProps($node, props) {
     if(!props) {
@@ -20,7 +22,16 @@ function setEventProps($node, events) {
 function removeEventProps($node, events) {
     Object.entries(events).forEach(([event, fn]) => $node.removeEventListener(event, fn));
 }
-
+function createArrayFragmentHTMLNode(node, $childNodes = []) {
+    const $node = document.createDocumentFragment();
+    $node._childNodes = $childNodes;
+    return $node;
+}
+function createElementHTMLNode(node) {
+    const $node = document.createElement(node.$$type);
+    setProps($node, node.$$props);
+    return $node;
+}
 function create(node, $childCache = new Map) {
     // if(node.$node) {
     //     throw new Error('node is already attached to the dom.');
@@ -35,11 +46,9 @@ function create(node, $childCache = new Map) {
         return node.$node = document.createDocumentFragment();
     }
     if(node.$$elementType === nodeType.ARRAY_FRAGMENT_NODE) {
-        node.$node = document.createDocumentFragment();
-        node.$node._childNodes = [];
+        node.$node = createArrayFragmentHTMLNode(node);
     } else {
-        node.$node = document.createElement(node.$$type);
-        setProps(node.$node, node.$$props);
+        node.$node = createElementHTMLNode(node);
     }
     node.$$children.forEach(child => {
         let $child;
@@ -234,7 +243,7 @@ function patch(parent, $parent, $$newNode, $$oldNode, idx = 0) {
         return;
     }
     copyHTMLNode($$newNode, $$oldNode);
-    patchProps($$newNode.$node, $$newNode.$$props, $$oldNode.$$props);
+    patchProps($$newNode.$node, getDeepProps($$newNode), getDeepProps($$oldNode));
     if($$oldNode.$$componentInstance) {
         $$oldNode.$$componentInstance.updateProps($$newNode.$$componentInstance.props);
         $$newNode.$$componentInstance = $$oldNode.$$componentInstance;
@@ -272,7 +281,7 @@ function doPostAttachTasks(parent, $parent, node) {
         node.$$componentInstance.mounted();
         attachUpdateListener(parent, node);
     }
-    $$children.forEach(child => doPostAttachTasks(node, getSafeHTMLParentNode(node.$node), child));
+    $$children.forEach(child => doPostAttachTasks(node, getSafeHTMLNode(node.$node), child));
 }
 function doPreAttachTasks(parent, node) {
     const $$children = getSafeChildren(node);
@@ -288,15 +297,60 @@ function getNextNumSiblings($node, num) {
     return $childNodes;
 }
 function hydrate($node, node) {
-    for(let i = 0; i < node.$$children; i++) {
-        const $child = $node.childNodes[i];
-        const child = node.$$children[i];
-        const htmlElementType = getHTMLElementTypeOfNode(child);
+    const $$children = getSafeChildren(node);
+    const $childNodes = $node.childNodes;
+    for(let i = 0, j = 0; i < $$children.length && j < $childNodes.length;) {
+        const child = $$children[i];
+        const $child = $childNodes[j];
+        if(child.$$elementType === nodeType.TEXT_NODE) {
+            if(!($child instanceof Text)) {
+                throw 'Expected text';
+            }
+            child.$node = $child;
+            i++, j++;
+            continue;
+        }
+        if(child.$$elementType === nodeType.PLACEHOLDER_NODE) {
+            child.$node = create(child);
+            i++;
+            continue;
+        }
+        if(child.$$elementType === nodeType.ARRAY_FRAGMENT_NODE) {
+            const arrayFragmentNodes = getNonEmptyChildrenBeforeIdx(child);
+            const $arrayFragmentNodes = getNextNumSiblings($child, arrayFragmentNodes.length);
+            arrayFragmentNodes.forEach((_child, idx) => hydrate($arrayFragmentNodes[idx], arrayFragmentNodes[idx]));
+            child.$$children.forEach((_child, idx) => {
+                _child.$node = $arrayFragmentNodes[idx];
+            });
+            child.$node = createArrayFragmentHTMLNode(child, $arrayFragmentNodes);
+            i++;
+            j = j + $arrayFragmentNodes.length;
+            continue;
+        }
+        if(child.$$elementType === nodeType.ELEMENT_NODE) {
+            if(toLowerCase($child.tagName) !== child.$$type) {
+                throw `Expected ${child.$$type}. Got ${type}`;
+            }
+            child.$node = $child;
+            setEventProps($child, getSafeProps(child).events);
+            const children = child.$$children;
+            const $children = $child.childNodes;
+            children.forEach((node, idx) => hydrate($children[idx], children[idx]));
+            i++, j++;
+            continue;
+        }
+        hydrate($child, child.$$renderedComponent);
+        if(child.$$renderedComponent) {
+            child.$$renderedComponent.$node = $child;
+        }
+        child.$node = $child;
+        i++, j++;
     }
+    node.$node = $node;
 }
 function stripGrapeTextComments($parent) {
     const treeWalker = document.createTreeWalker($parent, NodeFilter.SHOW_COMMENT, ($node) => {
-        if($node.nodeValue === 'grape-sep') {
+        if($node.nodeValue === GRAPE_TEXT_SEPARATOR) {
             return NodeFilter.FILTER_ACCEPT;
         }
         return NodeFilter.FILTER_SKIP;
@@ -308,10 +362,17 @@ function stripGrapeTextComments($parent) {
     nodes.forEach(node => node.remove());
     return nodes;
 }
-export function mount($parent, node) {
-    const $node = create(node);
+export function mount($parent, node, shouldHydrate = false) {
     const parent = createVirtualNode(null, null, node);
+    let $node;
+    if(shouldHydrate) {
+        stripGrapeTextComments($parent);
+        hydrate($parent, parent);
+        node.$node = $parent.firstChild;
+    } else {
+        $node = create(node);
+    }
     doPreAttachTasks(parent, node);
-    $parent.appendChild($node);
+    !shouldHydrate && $parent.appendChild($node);
     doPostAttachTasks(parent, $parent, node);
 }
