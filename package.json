@@ -15,5 +15,9 @@
     "compile": "babel src --out-dir lib",
     "watch:compile": "babel src -w --out-dir lib",
     "prepare": "npm run compile"
-  }
+  },
+  "files": [
+      "src",
+      "lib"
+  ]
 }
