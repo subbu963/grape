@@ -14,7 +14,6 @@
   "scripts": {
     "compile": "babel src --out-dir lib",
     "watch:compile": "babel src -w --out-dir lib",
-    "prepare": "yarn compile",
-    "postinstall": "yarn compile"
+    "prepare": "npm run compile"
   }
 }
