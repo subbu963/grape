@@ -1,6 +1,16 @@
 {
     "presets": [
-        "@babel/preset-env",
+        [
+            "@babel/preset-env",
+            {
+                "loose": true,
+                "targets": {
+                    "browsers": [
+                        "last 2 version"
+                    ]
+                }
+            }
+        ],
         [
             "babel-preset-grape",
             {

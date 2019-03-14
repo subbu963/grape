@@ -7,9 +7,18 @@ import Component from '../classes/component';
 import EVENTS from '../constants/events';
 import {isCustomAttr} from '../utils/attr';
 
+// We render `PLACEHOLDER_NODE` for these values
 const PLACEHOLDER_POSSIBLE_VALUES = new Set([null, undefined, false, '']);
+// Nodes which give valid html nodes
 const NON_EMPTY_NODES = new Set([nodeType.ELEMENT_NODE, nodeType.TEXT_NODE]);
 
+/**
+ * This function creates a virtual node
+ * @param {(string|function)} type type of the node
+ * @param {object} props node props
+ * @param {...(string|object[]|object|undefined|boolean)} children children of the node
+ * @returns {object} virtual node
+ */
 export function createVirtualNode(type, props, ...children) {
     const node = {
         $$type: type
@@ -20,12 +29,16 @@ export function createVirtualNode(type, props, ...children) {
             events: {},
             custom: {}
         };
+        // Store the original props to be used for components
         node.$$originalProps = props;
         for(const key in props) {
+            // events
             if(key.startsWith('on') && EVENTS.has(key.substr(2))) {
                 node.$$props.events[key.substr(2)] = props[key];
+            // custom attributes
             } else if(isCustomAttr(key)) {
                 node.$$props.custom[key] = props[key];
+            // text props
             } else {
                 if(key === 'style' && isObject(props[key])) {
                     node.$$props.textProps[key] = Object.entries(props[key]).map(entry => entry.join(':')).join(';');
@@ -42,18 +55,24 @@ export function createVirtualNode(type, props, ...children) {
     }
     if(type) {
         if(isFunction(type)) {
+            // classes should extend `Component`
             if(Component.isPrototypeOf(type)) {
                 node.$$elementType = nodeType.COMPONENT_NODE;
+                // create an instance of the component
                 node.$$componentInstance = new node.$$type(node.$$originalProps, node.$$children);
+                // render the component
                 node.$$renderedComponent = node.$$componentInstance.render();
+                // if it returns `null` return a `PLACEHOLDER_NODE`
                 if(!node.$$renderedComponent) {
                     return {
                         $$elementType: nodeType.PLACEHOLDER_NODE
                     };
                 }
+                // first child of a component shouldnt be a text node
                 if(node.$$renderedComponent.$$elementType === nodeType.TEXT_NODE) {
                     throw `Class ${type.name} render method returned a text node. It should return either a component, dom node or null`;
                 }
+                // components by default are self closing
                 node.$$isSelfClosing = true;
             } else {
                 throw `Class ${type.name} should extend Component`;
@@ -65,8 +84,14 @@ export function createVirtualNode(type, props, ...children) {
     }
     return node;
 }
+/**
+ * This function takes in an array of raw child nodes and returns an array of virtual nodes
+ * @param {array} rawChildren raw node children
+ * @returns {array} array of virtual nodes
+ */
 function rawChildrenToVirtualNodes(rawChildren) {
     const children = [];
+    // We need this flag to differentiate children from `ARRAY_FRAGMENT_NODE`
     children.$$isComponentChildren = true;
     for(const rawChild of rawChildren) {
         if(PLACEHOLDER_POSSIBLE_VALUES.has(rawChild)) {
@@ -75,6 +100,7 @@ function rawChildrenToVirtualNodes(rawChildren) {
             });
             continue;
         }
+        // child has `$$elementType` only when it is already a virtual node
         if(isDefined(rawChild.$$elementType)) {
             children.push(rawChild);
             continue;
@@ -84,12 +110,14 @@ function rawChildrenToVirtualNodes(rawChildren) {
                 children.push(...rawChild);
                 continue;
             }
+            // Its `ARRAY_FRAGMENT_NODE`
             children.push({
                 $$elementType: nodeType.ARRAY_FRAGMENT_NODE,
                 $$children: rawChildrenToVirtualNodes(rawChild)
             });
             continue;
         }
+        // Component nodes call `createVirtualNode` before this step. So they are already virtual nodes
         children.push({
             $$elementType: nodeType.TEXT_NODE,
             $$textContent: rawChild
@@ -97,6 +125,12 @@ function rawChildrenToVirtualNodes(rawChildren) {
     }
     return children;
 }
+// It gives you the function
+/**
+ * This function takes in an array of raw child nodes and returns an array of virtual nodes
+ * @param {array} rawChildren raw node children
+ * @returns {array} array of virtual nodes
+ */
 function getChildKeyPositionMap(node) {
     return node.$$children.reduce((acc, child, idx) => {
         if(child.$$props && child.$$props.custom) {
