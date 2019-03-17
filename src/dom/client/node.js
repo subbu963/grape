@@ -291,12 +291,12 @@ function setRef(node) {
 function doPostAttachTasks(parent, $parent, node) {
     const $$children = getSafeChildren(node);
     setHTMLParentNode($parent, node.$node);
+    $$children.forEach(child => doPostAttachTasks(node, getSafeHTMLNode(node.$node), child));
     if(node.$$elementType === nodeType.COMPONENT_NODE) {
         node.$$componentInstance.mounted();
         attachUpdateListener(parent, node);
     }
     setRef(node);
-    $$children.forEach(child => doPostAttachTasks(node, getSafeHTMLNode(node.$node), child));
 }
 function doPreAttachTasks(parent, node) {
     const $$children = getSafeChildren(node);
