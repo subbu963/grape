@@ -1,6 +1,7 @@
 import nodeType from '../../constants/node-type';
 import {GRAPE_TEXT_SEPARATOR} from '../../constants/element';
 import {toLowerCase} from '../../utils/string';
+import {isFunction} from '../../utils/type';
 import {getDeepProps, getNodeDiff, getPropDiff, getSafeChildren, getSafeProps, getNonEmptyChildrenBeforeIdx, setParentNode, createVirtualNode} from '../../vdom/node';
 
 function setProps($node, props) {
@@ -274,6 +275,19 @@ function attachUpdateListener(parent, node) {
         node.$$renderedComponent = $$newRenderedComponent;
     });
 }
+function setRef(node) {
+    if(!node) {
+        return;
+    }
+    if(node.$$elementType === nodeType.COMPONENT_NODE) {
+        return setRef(node.$$renderedComponent);
+    }
+    const $$props = getSafeProps(node);
+    if(!('ref' in $$props.custom) || !isFunction($$props.custom.ref) || node.$node instanceof DocumentFragment) {
+        return;
+    }
+    $$props.custom.ref(node.$node);
+}
 function doPostAttachTasks(parent, $parent, node) {
     const $$children = getSafeChildren(node);
     setHTMLParentNode($parent, node.$node);
@@ -281,6 +295,7 @@ function doPostAttachTasks(parent, $parent, node) {
         node.$$componentInstance.mounted();
         attachUpdateListener(parent, node);
     }
+    setRef(node);
     $$children.forEach(child => doPostAttachTasks(node, getSafeHTMLNode(node.$node), child));
 }
 function doPreAttachTasks(parent, node) {
