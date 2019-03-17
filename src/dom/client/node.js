@@ -246,8 +246,7 @@ function patch(parent, $parent, $$newNode, $$oldNode, idx = 0) {
     copyHTMLNode($$newNode, $$oldNode);
     patchProps($$newNode.$node, getDeepProps($$newNode), getDeepProps($$oldNode));
     if($$oldNode.$$componentInstance) {
-        $$oldNode.$$componentInstance.updateProps($$newNode.$$componentInstance.props);
-        $$newNode.$$componentInstance = $$oldNode.$$componentInstance;
+        $$newNode.$$componentInstance.copyState($$oldNode.$$componentInstance.state);
         attachUpdateListener(parent, $$newNode);
     }
     const $newChildren = getSafeChildren($$newNode);

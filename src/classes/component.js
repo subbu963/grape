@@ -4,8 +4,8 @@ export default class Component {
         this.children = children;
         this.state = {};
     }
-    updateProps(props) {
-        this.props = props;
+    copyState(state) {
+        this.state = state;
     }
     mounted(){}
     willUnmount(){}
