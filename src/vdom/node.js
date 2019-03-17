@@ -172,8 +172,11 @@ export function getDeepProps(node) {
     return getSafeProps(getDeepElement(node));
 }
 export function getSafeChildren(node) {
+    if(!node) {
+        return [];
+    }
     if(node.$$elementType === nodeType.COMPONENT_NODE) {
-        return node.$$renderedComponent ? node.$$renderedComponent.$$children : [];
+        return getSafeChildren(node.$$renderedComponent);
     }
     return node.$$children || [];
 }
