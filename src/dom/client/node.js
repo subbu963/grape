@@ -292,11 +292,11 @@ function doPostAttachTasks(parent, $parent, node) {
     const $$children = getSafeChildren(node);
     setHTMLParentNode($parent, node.$node);
     $$children.forEach(child => doPostAttachTasks(node, getSafeHTMLNode(node.$node), child));
+    setRef(node);
     if(node.$$elementType === nodeType.COMPONENT_NODE) {
         node.$$componentInstance.mounted();
         attachUpdateListener(parent, node);
     }
-    setRef(node);
 }
 function doPreAttachTasks(parent, node) {
     const $$children = getSafeChildren(node);
