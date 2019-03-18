@@ -33,7 +33,7 @@ function createElementHTMLNode(node) {
     setProps($node, node.$$props);
     return $node;
 }
-function create(node, $childCache = new Map) {
+function create(node) {
     // if(node.$node) {
     //     throw new Error('node is already attached to the dom.');
     // }
@@ -52,13 +52,7 @@ function create(node, $childCache = new Map) {
         node.$node = createElementHTMLNode(node);
     }
     node.$$children.forEach(child => {
-        let $child;
-        if($childCache.has(getSafeProps(child).custom.key)) {
-            $child = $childCache.get(getSafeProps(child).custom.key);
-            child.$node = $child;
-        } else {
-            $child = create(child);
-        }
+        const $child = create(child);
         if(node.$$elementType === nodeType.ARRAY_FRAGMENT_NODE) {
             node.$node._childNodes.push($child);
         }
@@ -163,7 +157,6 @@ function patch(parent, $parent, $$newNode, $$oldNode, idx = 0) {
         return;
     }
     if(diff.fragment) {
-        // debugger
         setParentNode(parent, $$newNode);
         const numSiblingsBeforeIdx = getNonEmptyChildrenBeforeIdx($$newNode.$$parent, idx).length;
         for(const [key, idx] of Object.entries(diff.fragment.removed)) {
