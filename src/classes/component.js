@@ -7,6 +7,9 @@ export default class Component {
     copyState(state) {
         this.state = state;
     }
+    copyProps(props) {
+        this.props = props;
+    }
     mounted(){}
     willUnmount(){}
     setUpdateListener(onUpdateListener) {

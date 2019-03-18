@@ -246,7 +246,12 @@ function patch(parent, $parent, $$newNode, $$oldNode, idx = 0) {
     copyHTMLNode($$newNode, $$oldNode);
     patchProps($$newNode.$node, getDeepProps($$newNode), getDeepProps($$oldNode));
     if($$oldNode.$$componentInstance) {
-        $$newNode.$$componentInstance.copyState($$oldNode.$$componentInstance.state);
+        // Props can change, so we need to copy over the props to the `$$oldNode.$$componentInstance`
+        $$oldNode.$$componentInstance.copyProps($$newNode.$$componentInstance.props);
+        // Re use the instance, we need to do it cause many event handlers might be attached to the `$$oldNode.$$componentInstance`
+        $$newNode.$$componentInstance = $$oldNode.$$componentInstance;
+        // Need to render again cause we might have got new props
+        $$newNode.$$renderedComponent = $$newNode.$$componentInstance.render();
         attachUpdateListener(parent, $$newNode);
     }
     const $newChildren = getSafeChildren($$newNode);
@@ -293,8 +298,8 @@ function doPostAttachTasks(parent, $parent, node) {
     $$children.forEach(child => doPostAttachTasks(node, getSafeHTMLNode(node.$node), child));
     setRef(node);
     if(node.$$elementType === nodeType.COMPONENT_NODE) {
-        node.$$componentInstance.mounted();
         attachUpdateListener(parent, node);
+        node.$$componentInstance.mounted();
     }
 }
 function doPreAttachTasks(parent, node) {
