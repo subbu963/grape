@@ -341,7 +341,7 @@ function hydrate($node, node) {
         }
         if(child.$$elementType === nodeType.ELEMENT_NODE) {
             if(toLowerCase($child.tagName) !== child.$$type) {
-                throw `Expected ${child.$$type}. Got ${type}`;
+                throw `Expected ${child.$$type}. Got ${toLowerCase($child.tagName)}`;
             }
             child.$node = $child;
             setEventProps($child, getSafeProps(child).events);
