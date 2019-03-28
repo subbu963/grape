@@ -222,6 +222,9 @@ export function getPropDiff(newProps, oldProps) {
     }
     return diff;
 }
+export function createDummyNode($$children) {
+    return {$$children, $$elementType: nodeType.DUMMY_NODE};
+}
 export function getNodeDiff(newNode, oldNode) {
     const diff = {};
     if(!oldNode || !newNode) {

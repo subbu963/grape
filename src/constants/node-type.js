@@ -1,4 +1,5 @@
 export default {
+    DUMMY_NODE: -4,
     ARRAY_FRAGMENT_NODE: -3,
     PLACEHOLDER_NODE: -2,
     PURE_COMPONENT_NODE: -1,

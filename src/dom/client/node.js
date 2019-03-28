@@ -2,7 +2,7 @@ import nodeType from '../../constants/node-type';
 import {GRAPE_TEXT_SEPARATOR} from '../../constants/element';
 import {toLowerCase} from '../../utils/string';
 import {isFunction} from '../../utils/type';
-import {getDeepProps, getNodeDiff, getPropDiff, getSafeChildren, getSafeProps, getNonEmptyChildrenBeforeIdx, setParentNode, createVirtualNode} from '../../vdom/node';
+import {createDummyNode, getDeepProps, getNodeDiff, getPropDiff, getSafeChildren, getSafeProps, getNonEmptyChildrenBeforeIdx, setParentNode, createVirtualNode} from '../../vdom/node';
 
 function setProps($node, props) {
     if(!props) {
@@ -103,6 +103,9 @@ function getChildKeyCache(node) {
         }
         return acc;
     }, new Map);
+}
+function createDummyHTMLNode(childNodes) {
+    return {childNodes};
 }
 function patchProps($node, newProps, oldProps) {
     if($node instanceof DocumentFragment) {
@@ -333,6 +336,7 @@ function hydrate($node, node) {
             arrayFragmentNodes.forEach((_child, idx) => hydrate($arrayFragmentNodes[idx], arrayFragmentNodes[idx]));
             child.$$children.forEach((_child, idx) => {
                 _child.$node = $arrayFragmentNodes[idx];
+                setEventProps($arrayFragmentNodes[idx], getSafeProps(_child).events);
             });
             child.$node = createArrayFragmentHTMLNode(child, $arrayFragmentNodes);
             i++;
@@ -345,10 +349,21 @@ function hydrate($node, node) {
             }
             child.$node = $child;
             setEventProps($child, getSafeProps(child).events);
-            const children = child.$$children;
+            const children = getSafeChildren(child);
             const $children = $child.childNodes;
-            children.forEach((node, idx) => hydrate($children[idx], children[idx]));
-            i++, j++;
+            let numJDelta = 1;
+            children.forEach((_, idx) => {
+                const _child = children[idx];
+                const _$child = $children[idx];
+                if(_child.$$elementType === nodeType.ARRAY_FRAGMENT_NODE) {
+                    const arrayFragmentNodes = getNonEmptyChildrenBeforeIdx(child);
+                    numJDelta += arrayFragmentNodes.length;
+                    return hydrate(createDummyHTMLNode([$children[idx]]), createDummyNode([children[idx]]));
+                }
+                hydrate($children[idx], children[idx]);
+            });
+            i++;
+            j += numJDelta;
             continue;
         }
         hydrate($child, child.$$renderedComponent);
