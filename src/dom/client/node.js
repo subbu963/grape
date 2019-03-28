@@ -358,7 +358,7 @@ function hydrate($node, node) {
                 if(_child.$$elementType === nodeType.ARRAY_FRAGMENT_NODE) {
                     const arrayFragmentNodes = getNonEmptyChildrenBeforeIdx(child);
                     numJDelta += arrayFragmentNodes.length;
-                    return hydrate(createDummyHTMLNode([_$child]]), createDummyNode([_child]));
+                    return hydrate(createDummyHTMLNode([_$child]), createDummyNode([_child]));
                 }
                 hydrate($children[idx], children[idx]);
             });
