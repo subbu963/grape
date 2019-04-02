@@ -23,7 +23,7 @@ We need to add `babel-preset-grape` to `.babelrc`
 ### Components
 Components can implement their own `render` method. Without which it will render a empty component.
 
-GrapeJS supports writing html and css attributes with their actual name unlike React. We can just `class` instead of `className`, 'onclick' instead of `onClick`, etc
+GrapeJS supports writing html and css attributes with their actual name unlike React. We can just use `class` instead of `className`, 'onclick' instead of `onClick`, etc
 ```javascript
 import grape, {Component} from 'grape';
 
@@ -38,7 +38,7 @@ class Hello extends Component {
 ```
 You can get the `props` from `this.props`, `state` from `this.state` and `children` from `this.children`.
 
-You can use a list of JSX nodes similar to React. We need to pass key for every child component.
+You can use a list of JSX nodes similar to React. We need to pass a unique key for every child component.
 ```javascript
 import grape, {Component} from 'grape';
 
