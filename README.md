@@ -5,6 +5,7 @@ It's a React-ish library for building UI's. It uses virtual dom underneath and f
 ## Features
 - Lightweight(~7.6 KB gzipped and minified)
 - Server side rendering
+- Conditional `class` attributes
 
 ## Installation
 ```bash
@@ -46,6 +47,23 @@ class List extends Component {
     render() {
         return (
             <ul>{this.props.items.map(item => <li key={item.id}>{item.text}</li>)}</ul>
+        );
+    }
+}
+```
+You can add styles using objects and conditional classes using arrays without the need for libraries like `classnames`.
+```javascript
+import grape, {Component} from 'grape';
+
+class List extends Component {
+    render() {
+        const style = {
+            color: this.state.counter % 2 ? 'red': 'blue',
+            'background-color': '#FFF'
+        };
+        const classes = [this.state.counter % 2 && 'odd', 'default-class']
+        return (
+            <div style={style} class={classes}>
         );
     }
 }
