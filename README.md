@@ -11,7 +11,14 @@ It's a React-ish library for building UI's. It uses virtual dom underneath and f
 $ yarn add https://github.com/terio/grape
 $ yarn add https://github.com/terio/babel-preset-grape --dev
 ```
-
+We need to add `babel-preset-grape` to `.babelrc`
+```json
+{
+    "presets": [
+        "babel-preset-grape"
+    ]
+}
+```
 ## Basics
 ### Components
 Components can implement their own `render` method. Without which it will render a empty component.
