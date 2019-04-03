@@ -126,5 +126,9 @@ import App from '../client/components/app';
 
 const html = renderToString(<App/>, true);
 ```
+## Planned Features
+- [ ] Explore moving the diffing algorithm to workers or webassembly
+- [ ] Implement functional components
+- [ ] Make updates async
 ## Stats
 Currently the library weighs around ~ 7.6 KB gzipped and minified compared to React which ~ 49.8 KB. GrapeJS has a lot less features and is still in early stages. We should able to squeeze the size lot more by removing a lot of ES6 code that is used without compromising on performance.
