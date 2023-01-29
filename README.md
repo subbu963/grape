@@ -9,8 +9,8 @@ It's a React-ish library for building UI's. It uses virtual dom underneath and f
 
 ## Installation
 ```bash
-$ yarn add https://github.com/terio/grape
-$ yarn add https://github.com/terio/babel-preset-grape --dev
+$ yarn add https://github.com/subbu963/grape
+$ yarn add https://github.com/subbu963/babel-preset-grape --dev
 ```
 We need to add `babel-preset-grape` to `.babelrc`
 ```json
